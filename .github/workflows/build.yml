@@ -1,0 +1,44 @@
+name: Build
+
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - '**.py'
+      - '**.yml'
+
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup Python 3.9
+      uses: actions/setup-python@v4.7.1
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-dev.txt
+
+    - name: Build
+      run: flet pack main.py --name "amazing_optimizer" --distpath .
+
+    - name: Publish build
+      uses: softprops/action-gh-release@v0.1.15
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        files: amazing_optimizer.exe
+        tag_name: ${{ github.run_number }}
+        name: Download here!
