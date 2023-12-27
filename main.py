@@ -1,5 +1,5 @@
 import flet as ft
-import os
+import os, winreg
 
 
 def main(page: ft.Page) -> None:
@@ -31,20 +31,36 @@ def main(page: ft.Page) -> None:
         popup.content = ft.Text(f"{deleted} file/s deleted successfully!")
         popup.open = True
         page.update()
+    
+    def disable_telemetry() -> None:
+        key_path = r"SOFTWARE\Policies\Microsoft\Windows\DataCollection"
+        key_name = "AllowTelemetry"
+        key_value = 0
 
+        try:
+            # Open the registry key
+            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path, 0, winreg.KEY_SET_VALUE)
 
-    # Functions for buttons
-    def remove_windows_temp(e: ft.ControlEvent) -> None:
-        remove_files("C:\\Windows\\Temp")
+            # Set value
+            winreg.SetValueEx(key, key_name, 0, winreg.REG_DWORD, key_value)
+            winreg.CloseKey(key)
 
+            popup.content = ft.Text(f"Success! Telemetry was disabled! (You should restart your PC)")
 
-    def remove_user_temp(e: ft.ControlEvent) -> None:
-        user = os.getenv("USERNAME", "usuario")
-        remove_files(f"C:\\Users\\{user}\\AppData\\Local\\Temp")
+        except Exception as e:
+            popup.content = ft.Text(f"Error: {e}")
 
+        finally:
+            popup.open = True
+            page.update()
 
-    def remove_prefetch(e: ft.ControlEvent) -> None:
-        remove_files("C:\\Windows\\Prefetch")
+    # Env
+    user = os.getenv("USERNAME", "usuario")
+
+    # Paths
+    WINDOWS_TEMP = "C:\\Windows\\Temp"
+    USER_TEMP = f"C:\\Users\\{user}\\AppData\\Local\\Temp"
+    PREFETCH = "C:\\Windows\\Prefetch"
 
 
     # Elements!
@@ -56,15 +72,19 @@ def main(page: ft.Page) -> None:
     appbar = ft.AppBar(title=ft.Text(value="Windows optimizer"), bgcolor="blue", actions=[ft.IconButton(icon=ft.icons.INFO, on_click=show_credits)])
 
     home_buttons = ft.Row([
-        ft.ElevatedButton(text="Clean temporary files", on_click=lambda _: page.go("/clean"))
+        ft.ElevatedButton(text="Clean temporary files", on_click=lambda _: page.go("/clean")),
+        ft.ElevatedButton(text="Register manipulations", on_click=lambda _: page.go("/register"))
     ], alignment=ft.MainAxisAlignment.CENTER)
 
     clean_buttons = ft.Row([
-        ft.ElevatedButton(text="Windows temp", on_click=remove_windows_temp),
-        ft.ElevatedButton(text="User temp", on_click=remove_user_temp),
-        ft.ElevatedButton(text="Prefetch", on_click=remove_prefetch)
+        ft.ElevatedButton(text="Windows temp", on_click=lambda _: remove_files(WINDOWS_TEMP)),
+        ft.ElevatedButton(text="User temp", on_click=lambda _: remove_files(USER_TEMP)),
+        ft.ElevatedButton(text="Prefetch", on_click=lambda _: remove_files(PREFETCH))
     ], alignment=ft.MainAxisAlignment.CENTER)
 
+    register_buttons = ft.Row([
+        ft.ElevatedButton(text="Disable telemetry", on_click=lambda _: disable_telemetry())
+    ], alignment=ft.MainAxisAlignment.CENTER)
 
     # Go to the home section when the user press the escape key
     def on_keyboard(e: ft.KeyboardEvent) -> None:
@@ -81,7 +101,7 @@ def main(page: ft.Page) -> None:
         page.views.clear()
 
         # Home
-        appbar.title.value = "Windows Optimizer" # type: ignore
+        appbar.title.value = "Windows Optimizer"
         text.value = "Welcome!"
         page.views.append(
             ft.View(
@@ -90,13 +110,13 @@ def main(page: ft.Page) -> None:
                 vertical_alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=26
+                )
             )
-        )
 
 
         # Section for cleaning functions
         if page.route == "/clean":
-            appbar.title.value = "Cleaning section" # type: ignore
+            appbar.title.value = "Cleaning section"
             text.value = "Click on these buttons to clean your temp files of each directory"
             page.views.append(
                 ft.View(
@@ -104,8 +124,21 @@ def main(page: ft.Page) -> None:
                     controls=[appbar, text, popup, clean_buttons, very_cute_message],
                     vertical_alignment=ft.MainAxisAlignment.CENTER,
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                )
             )
-        )
+            
+        # Section for regedit
+        if page.route == "/register":
+            appbar.title.value = "Windows register manipulations"
+            text.value = "Click on these buttons to manipulate Windows register right away!"
+            page.views.append(
+                ft.View(
+                    route="/register",
+                    controls=[appbar, text, popup, register_buttons, very_cute_message],
+                    vertical_alignment=ft.MainAxisAlignment.CENTER,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER
+                )
+            )
     
         page.update()
     
